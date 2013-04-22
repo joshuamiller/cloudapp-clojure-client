@@ -6,4 +6,5 @@
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [clj-http "0.7.2"]
                  [org.clojure/data.json "0.2.2"]
-                 [clj-time "0.4.4"]])
+                 [clj-time "0.4.4"]
+                 [collection-json "0.1.0-SNAPSHOT"]])
