@@ -3,38 +3,50 @@
             [collection-json.client :as client]))
 
 (declare auth-header)
+(def root-url "https://api.getcloudapp.com/")
+(def authorization-url (str root-url "authorization"))
 
-(defrecord Drop [id name private? trash? views created])
-
-(defn make-drop
+(defn- make-drop
   [item]
-  (->Drop (client/get-value "id" item)
-          (client/get-value "name" item)
-          (client/get-value "private" item)
-          (client/get-value "trash" item)
-          (client/get-value "views" item)
-          (time/parse (client/get-value "created" item))))
+  {:id (client/get-value "id" item)
+   :name (client/get-value "name" item)
+   :private? (client/get-value "private" item)
+   :trash? (client/get-value "trash" item)
+   :views (client/get-value "views" item)
+   :created (time/parse (client/get-value "created" item))})
 
 (defn- get-collection
-  [url]
-  (client/get-collection url {:headers auth-header}))
+  [url token]
+  (client/get-collection url {:headers (auth-header token)}))
 
-(defn- follow-link
-  [name coll]
-  (client/follow-link name coll {:headers auth-header}))
+(defn follow-link
+  [name coll token]
+  (client/follow-link name coll {:headers (auth-header token)}))
+
+(defn- auth-header
+  [token]
+  {"Authorization" (str "Token token=" token)})
 
 (defn get-token
-  [user pass]
-  (let [coll (client/get-collection "https://api.getcloudapp.com/authorization" {:basic-auth [user pass]})]
+  [email pass]
+  (let [coll (client/get-collection authorization-url {:basic-auth [email pass]})]
     (client/get-value "token" (first (:items coll)))))
 
 (defn root-collection
   "Get authentication token to connect to CloudApp"
-  [user pass]
-  (let [token (get-token user pass)]
-    (def auth-header {"Authorization" (str "Token token=" token)})
-    (get-collection "https://api.getcloudapp.com/")))
+  [token]
+  (get-collection root-url token))
 
 (defn drops
-  [coll]
-  (follow-link "drops" coll))
+  [coll token]
+  (->> (follow-link "drops" coll token)
+       :items
+       (map make-drop)))
+
+(defn create-drop
+  [values coll token]
+  (client/post-item values coll {:headers (auth-header token)}))
+
+(defn update-drop
+  [values coll item token]
+  (client/put-item (merge (make-drop item) values) coll item {:headers (auth-header token)}))
